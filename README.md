@@ -15,13 +15,19 @@ Tested against:
 
 ## Why the Manual Method
 
-The BlueBuild `cosign` module hides three moving parts: the key, the policy,
-and the registry attachment config. This guide lays all three out explicitly
-so you can:
+The BlueBuild `cosign` module hides four moving parts: the private key
+(GitHub Actions secret), the public key, the policy, and the registry
+attachment config. With the module you don't know what the secret
+actually contains — you can't inspect it, rotate it, or verify it matches
+the public key baked into the image. This guide lays all four out
+explicitly so you can:
 
-- Audit exactly what's deployed and where
+- Audit exactly what's deployed, where, and what's kept secret
+- Regenerate the key pair yourself
+- Delete the repository and create a new one with the same name
 - Swap keys or registries without waiting on module updates
 - Understand why `/etc` shadows `/usr/etc` and how to work with it
+- Rotate keys on your own schedule with full visibility
 
 ---
 
@@ -194,6 +200,8 @@ diff ~/sirius-os-cosign/cosign.pub \
 > registries (quay.io, docker.io) during builds and toolbox use, while your
 > specific repo is still strictly verified.
 
+---
+
 ### For Wolf-OS (Silverblue base)
 
 Use the same structure but change the repo scope and key path to `wolf-os`,
@@ -219,6 +227,16 @@ and trim the transport list to just `docker`, `docker-daemon`, and
   }
 }
 ```
+
+## Policy Comparison: Strict vs Permissive
+
+| Policy | `default` | Repo scope | Purpose |
+|---|---|---|---|
+| Strict | `reject` | `sigstoreSigned` | Verify known registries, reject unknown |
+| Permissive | `insecureAcceptAnything` | *(absent)* | Accept everything, verification disabled |
+
+Use the strict policy. The permissive form is only for testing or for hosts
+where signature enforcement is deliberately disabled.
 
 ---
 
@@ -347,8 +365,8 @@ same name) does **not** inherit the old grant.
 1. Package settings →
    `https://github.com/users/<user>/packages/container/<image>/settings`
     
-    Example: 
-    `https://github.com/users/jonathonp3/packages/container/sirius-os/settings`
+   Example: 
+   `https://github.com/users/jonathonp3/packages/container/sirius-os/settings`
     
 2. **Manage Actions access**
 
@@ -370,17 +388,6 @@ but:
 - Is not safe if a running host is mid-`bootc upgrade`
 
 Use only if the package is already broken and nothing depends on it.
-
-
-## Policy Comparison: Strict vs Permissive
-
-| Policy | `default` | Repo scope | Purpose |
-|---|---|---|---|
-| Strict | `reject` | `sigstoreSigned` | Verify known registries, reject unknown |
-| Permissive | `insecureAcceptAnything` | *(absent)* | Accept everything, verification disabled |
-
-Use the strict policy. The permissive form is only for testing or for hosts
-where signature enforcement is deliberately disabled.
 
 ---
 
